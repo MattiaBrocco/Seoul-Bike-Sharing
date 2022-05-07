@@ -1,0 +1,13 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+df <- read.csv(file = "SeoulBikeData.csv")
+```
+
+```{r}
+df
+```
+
