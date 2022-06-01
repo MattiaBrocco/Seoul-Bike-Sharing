@@ -1,13 +1,69 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Seoul Bike Sharing"
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r}
-df <- read.csv(file = "SeoulBikeData.csv")
+The dataset available on "https://archive.ics.uci.edu/ml/index.php" contains data about how many public bikes are rented at each hour by the Seoul Bike Sharing System with the corresponding weather and holidays informations. 
+The goal of this project is looking for the best model to perform a regression task about the number of public bikes rented at each hour ("Rented.Bike.Count") in relation to the other features of the dataset.
+	
+```{r, echo=FALSE}
+df <- read.csv("SeoulBikeData.csv")
+str(df)
 ```
 
+The multivariate dataframe consists of 8760 observations and 14 variables. Since for each day we have access to the data for each hour, this means we have 365 distinct days.
+```{r,echo=FALSE}
+print(df[c(1,dim(df)[1]),"Date"],max.levels = 0)
+```
+
+While it is useful to have separated data for each hour, we won't be able to understand if a behaviour for a specific holiday repeats over the years (if for example during 01/01/2018 a few bikes were used, since it is the only New Years Eve we have we cannot give accurate predictions about the next ones but only about holiday days in general).
+
+There are 18 holiday days in the dataset (New Years Eve, Buddha's birthday, Day of Independence and so on)
+```{r,echo=FALSE}
+print(c(unique(df[df[,"Holiday"]=="Holiday",]["Date"])),max.levels = 0)
+```
+
+The feature "Functioning.day" indicates if there are data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from the 7 am
+```{r,echo=FALSE}
+table(df["Functioning.Day"])
+print(c(unique(df[df[,"Functioning.Day"]=="No",]["Date"])),max.levels = 0)
+print(c(df[df[,"Date"]=="06/10/2018",][,c("Hour","Functioning.Day")]),max.levels = 0)
+```
+
+ESCLUDERE RIGHE CON FUNCTIONINGDAY = No ?
 ```{r}
-df
+df = df[df[,"Functioning.Day"]=="Yes",]
+```
+
+
+There are no NA values in the dataframe
+```{r}
+sum(any(is.na(df[,])))
+```
+```{r,echo=FALSE}
+#add feature to have the total bikes rented in each day
+df$Daily.Rented.Bikes <- ave(df$Rented.Bike.Count,df$Date,FUN=sum)
+```
+
+
+Plotting the number of rented bikes for day we can see there is no pattern.
+
+```{r,echo=FALSE}
+plot(df$Date,df$Daily.Rented.Bikes,main="Bikes rented for day",xlab="Day",ylab="Rented Bikes")
+```
+
+We can see the average number of bikes rented in Winter is much less than the average number in the other seasons. 
+Summer has the highest average, Autumn has a higher average than Spring probably because it benefits from the hot climate still present for a few weeks at the end of the summer season.
+
+```{r,echo=FALSE}
+plot(df$Seasons,df$Daily.Rented.Bikes,main="Bikes rented for season",xlab="Season",ylab="Rented Bikes")
+```
+
+Holidays are characterized by an average of rented bikes greater than that of non holidays.
+
+```{r,echo=FALSE}
+plot(df$Holiday,df$Daily.Rented.Bikes,main="Bikes rented for holiday",xlab="Holiday",ylab="Rented Bikes")
 ```
 
