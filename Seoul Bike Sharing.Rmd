@@ -1,15 +1,19 @@
 ---
 title: "Seoul Bike Sharing"
 output:
-  html_document:
+  html_document: 
     df_print: paged
+  pdf_document: default
 ---
 
 The dataset available on "https://archive.ics.uci.edu/ml/index.php" contains data about how many public bikes are rented at each hour by the Seoul Bike Sharing System with the corresponding weather and holidays informations. 
 The goal of this project is looking for the best model to perform a regression task about the number of public bikes rented at each hour ("Rented.Bike.Count") in relation to the other features of the dataset.
 	
 ```{r, echo=FALSE}
-df <- read.csv("SeoulBikeData.csv")
+#install.packages('fastDummies')
+#one of the group members has to delete the special character '°' from some of the column names in the csv file to avoid an error in make.names(...)
+library('fastDummies')
+df <- read.csv("SeoulBikeData.csv",header=TRUE)
 str(df)
 ```
 
@@ -47,23 +51,64 @@ sum(any(is.na(df[,])))
 df$Daily.Rented.Bikes <- ave(df$Rented.Bike.Count,df$Date,FUN=sum)
 ```
 
+```{r}
+df$Date <- as.Date(df$Date,format="%d/%m/%Y")
+```
 
-Plotting the number of rented bikes for day we can see there is no pattern.
-
+We can see the average number of bikes rented for day is low in Winter, increase in Spring, reaches the maximum in June, there is a slight decrease until August (probably some users go outside of the city during the Summer), increases again in September (end of the summer holidays) and then starts decreasing in October.
 ```{r,echo=FALSE}
 plot(df$Date,df$Daily.Rented.Bikes,main="Bikes rented for day",xlab="Day",ylab="Rented Bikes")
 ```
 
-We can see the average number of bikes rented in Winter is much less than the average number in the other seasons. 
-Summer has the highest average, Autumn has a higher average than Spring probably because it benefits from the hot climate still present for a few weeks at the end of the summer season.
+We can see the average number of bikes rented in Winter is much less than the average number in the other seasons (because of the low temperatures). 
+Summer has the highest average, while Autumn has a higher average than Spring probably because it benefits from the hot climate still present for a few weeks at the end of the summer season.
 
 ```{r,echo=FALSE}
+df$Seasons <- as.factor(df$Seasons)
 plot(df$Seasons,df$Daily.Rented.Bikes,main="Bikes rented for season",xlab="Season",ylab="Rented Bikes")
 ```
 
-Holidays are characterized by an average of rented bikes greater than that of non holidays.
-
+Non Holiday days are characterized by an average of rented bikes greater than that of Holidays days. This is due to the small number of Holiday days in the year
 ```{r,echo=FALSE}
+df$Holiday <- as.factor(df$Holiday)
 plot(df$Holiday,df$Daily.Rented.Bikes,main="Bikes rented for holiday",xlab="Holiday",ylab="Rented Bikes")
+```
+
+We add a factor variable related to the hour time
+```{r}
+df$Time <- ifelse(df$Hour>=18, 'Evening',
+                  ifelse(df$Hour>=12, 'Afternoon',
+                         ifelse(df$Hour>=6, 'Morning',
+                                ifelse(df$Hour>=0, 'Night'))))
+df$Time <- as.factor(df$Time)
+```
+
+
+```{r}
+plot(df$Time,df$Rented.Bike.Count,main="Bikes rented for Time",xlab="Time",ylab="Rented Bikes")
+```
+
+*********************
+Vedere grafici delle situazioni ambientali gioraliere a seconda del giorno/stagione
+Fare grafico per vedere il numero medio di bici per ora
+***********************
+
+We get dummy variables from the categorial features
+```{r}
+library(fastDummies)
+df$Holiday<-ifelse(df$Holiday=="Holiday",1,0)
+df <- dummy_cols(df, select_columns = c('Seasons','Time'))
+```
+
+
+```{r}
+library(data.table)
+setnames(df,old = c("Seasons_Autumn","Seasons_Spring","Seasons_Summer","Seasons_Winter",
+                    "Time_Afternoon","Time_Evening","Time_Morning","Time_Night"),new = c("Autumn","Spring","Summer","Winter","Afternoon","Evening","Morning","Night"))
+```
+
+
+```{r}
+df
 ```
 
