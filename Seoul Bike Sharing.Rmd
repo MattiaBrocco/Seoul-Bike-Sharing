@@ -1,12 +1,12 @@
 ---
 title: "Seoul Bike Sharing"
 author:
-  - Brocco Mattia^[ID: 2044714]
-  - Magliani Jacopo^[ID: XXXXXXX]
+    - Brocco Mattia, 2044714
+    - Magliani Jacopo, XXXXXXX
 output:
-  html_document: 
-    df_print: paged
+  html_document: default
   pdf_document: default
+  df_print: paged
 ---
 
 
@@ -30,7 +30,6 @@ library(fastDummies)
 
 
 ```{r, echo = FALSE}
-#install.packages('fastDummies')
 #We found some problems with the make.names(...) function. thus we removed the '°' symbol from temperature.
 
 df <- read.csv("SeoulBikeData.csv",header=TRUE)
@@ -39,7 +38,7 @@ str(df)
 
 The multivariate dataframe consists of 8760 observations and 14 variables. Since for each day we have access to the data for each hour, this means we have 365 distinct days.
 
-```{r,echo=FALSE}
+```{r, echo = FALSE}
 print(df[c(1,dim(df)[1]),"Date"],max.levels = 0)
 ```
 
@@ -57,7 +56,7 @@ sum(any(is.na(df[,])))
 
 There are 18 holiday days in the dataset (New Years Eve, Buddha's birthday, Day of Independence and so on)
 ```{r,echo=FALSE}
-print(c(unique(df[df[,"Holiday"]=="Holiday",]["Date"])),max.levels = 0)
+print(c(unique(df[df[,"Holiday"]=="Holiday",]["Date"])), max.levels = 0)
 ```
 
 While it is useful to have separated data for each hour, we won't be able to understand whether the target variable is influenced by a specific holiday (e.g. New Year's Eve) given that we only have data for one year. What we will show, however, is whether the fact that one day is holiday or not has an impact on the target variable 
@@ -65,9 +64,9 @@ While it is useful to have separated data for each hour, we won't be able to und
 
 The feature "Functioning.day" indicates if there is data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from 7 am onwards.
 ```{r,echo=FALSE}
-table(df["Functioning.Day"])
-print(c(unique(df[df[,"Functioning.Day"]=="No",]["Date"])),max.levels = 0)
-print(c(df[df[,"Date"]=="06/10/2018",][,c("Hour","Functioning.Day")]),max.levels = 0)
+table(df$Functioning.Day)
+print(c(unique(df[df[,"Functioning.Day"] == "No",]["Date"])), max.levels = 0)
+print(c(df[df$Date == "06/10/2018",][, c("Hour", "Functioning.Day")]), max.levels = 0)
 ```
 
 ### 2.1. Graphical Data exploration
@@ -84,7 +83,7 @@ From this first plot we see how the target variable distribution is left-skewed 
 ```{r}
 # Create a new data frame to store aggregates of variables by date
 
-df$Date <- as.Date(df$Date,format="%d/%m/%Y")
+df$Date <- as.Date(df$Date, format = "%d/%m/%Y")
 
 pivot.table <- aggregate(Rented.Bike.Count~Date, df, FUN = mean)
 ```
@@ -99,7 +98,6 @@ plot(pivot.table$Date, pivot.table$Rented.Bike.Count,
 ```
 
 We can see the average number of bikes rented for day is low in Winter, increase in Spring, reaches the maximum in June, there is a slight decrease until August (probably some users go outside of the city during the Summer), increases again in September (end of the summer holidays) and then starts decreasing in October.
-
 
 ```{r,echo=FALSE}
 # Convert "Seasons" as factor and set a precise ordering
@@ -240,7 +238,7 @@ We gather the dummy variables from the categorial features
 
 
 ```{r}
-df
+head(df)
 ```
 
 
