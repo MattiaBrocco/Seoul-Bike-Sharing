@@ -1,114 +1,384 @@
 ---
 title: "Seoul Bike Sharing"
+author:
+  - Brocco Mattia^[ID: 2044714]
+  - Magliani Jacopo^[ID: XXXXXXX]
 output:
   html_document: 
     df_print: paged
   pdf_document: default
 ---
 
-The dataset available on "https://archive.ics.uci.edu/ml/index.php" contains data about how many public bikes are rented at each hour by the Seoul Bike Sharing System with the corresponding weather and holidays informations. 
-The goal of this project is looking for the best model to perform a regression task about the number of public bikes rented at each hour ("Rented.Bike.Count") in relation to the other features of the dataset.
-	
-```{r, echo=FALSE}
+
+## 1. INTRODUCTION
+
+The study hereby presented concerns the topic of demand forecasting, and the case study at hand entails the industry of bike sharing for the city during a time span of one year (between 2017 and 2018) in Seoul (South Korea).
+Data is available at "https://archive.ics.uci.edu/ml/index.php" 
+
+This project aims at assessing to which extent it is possible to predict the demand for bikes given the data at hand in order, ultimately, to provide some additional insights on the public sharing industry.
+For the sake of clearness, the target variable will be called "Rented.Bike.Count", and it is inherently a non-negative continuous variable.
+
+```{r, include = FALSE}
+library(car)
+library(Hmisc)
+library(ggplot2)
+library(corrplot)
+library(data.table)
+library(fastDummies)
+```
+
+
+
+```{r, echo = FALSE}
 #install.packages('fastDummies')
-#one of the group members has to delete the special character '°' from some of the column names in the csv file to avoid an error in make.names(...)
-library('fastDummies')
+#We found some problems with the make.names(...) function. thus we removed the '°' symbol from temperature.
+
 df <- read.csv("SeoulBikeData.csv",header=TRUE)
 str(df)
 ```
 
 The multivariate dataframe consists of 8760 observations and 14 variables. Since for each day we have access to the data for each hour, this means we have 365 distinct days.
+
 ```{r,echo=FALSE}
 print(df[c(1,dim(df)[1]),"Date"],max.levels = 0)
 ```
 
-While it is useful to have separated data for each hour, we won't be able to understand if a behaviour for a specific holiday repeats over the years (if for example during 01/01/2018 a few bikes were used, since it is the only New Years Eve we have we cannot give accurate predictions about the next ones but only about holiday days in general).
+## 2. EXPLORATORY DATA ANALYSIS
+
+In the first place we want to assess the "health" of the data.
+
+1) NA values
+```{r}
+# no empty values are present
+sum(any(is.na(df[,])))
+```
+2) Assessment on time windows and "functioning" flag.
+
 
 There are 18 holiday days in the dataset (New Years Eve, Buddha's birthday, Day of Independence and so on)
 ```{r,echo=FALSE}
 print(c(unique(df[df[,"Holiday"]=="Holiday",]["Date"])),max.levels = 0)
 ```
 
-The feature "Functioning.day" indicates if there are data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from the 7 am
+While it is useful to have separated data for each hour, we won't be able to understand whether the target variable is influenced by a specific holiday (e.g. New Year's Eve) given that we only have data for one year. What we will show, however, is whether the fact that one day is holiday or not has an impact on the target variable 
+
+
+The feature "Functioning.day" indicates if there is data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from 7 am onwards.
 ```{r,echo=FALSE}
 table(df["Functioning.Day"])
 print(c(unique(df[df[,"Functioning.Day"]=="No",]["Date"])),max.levels = 0)
 print(c(df[df[,"Date"]=="06/10/2018",][,c("Hour","Functioning.Day")]),max.levels = 0)
 ```
 
-ESCLUDERE RIGHE CON FUNCTIONINGDAY = No ?
+### 2.1. Graphical Data exploration
+
 ```{r}
-df = df[df[,"Functioning.Day"]=="Yes",]
+hist(df$Rented.Bike.Count, main = "Rented Bikes count")
+boxplot(df$Rented.Bike.Count, main = "Rented Bikes count", horizontal = T)
+```
+
+From this first plot we see how the target variable distribution is left-skewed and pretty farn from a normal distribution (consdering also the sample size).
+
+
+
+```{r}
+# Create a new data frame to store aggregates of variables by date
+
+df$Date <- as.Date(df$Date,format="%d/%m/%Y")
+
+pivot.table <- aggregate(Rented.Bike.Count~Date, df, FUN = mean)
 ```
 
 
-There are no NA values in the dataframe
-```{r}
-sum(any(is.na(df[,])))
-```
+
+
 ```{r,echo=FALSE}
 #add feature to have the total bikes rented in each day
-df$Daily.Rented.Bikes <- ave(df$Rented.Bike.Count,df$Date,FUN=sum)
-```
-
-```{r}
-df$Date <- as.Date(df$Date,format="%d/%m/%Y")
+plot(pivot.table$Date, pivot.table$Rented.Bike.Count,
+     main = "Bikes rented for day", xlab = "Day", ylab = "Rented Bikes")
 ```
 
 We can see the average number of bikes rented for day is low in Winter, increase in Spring, reaches the maximum in June, there is a slight decrease until August (probably some users go outside of the city during the Summer), increases again in September (end of the summer holidays) and then starts decreasing in October.
+
+
 ```{r,echo=FALSE}
-plot(df$Date,df$Daily.Rented.Bikes,main="Bikes rented for day",xlab="Day",ylab="Rented Bikes")
+# Convert "Seasons" as factor and set a precise ordering
+df$Seasons <- factor(df$Seasons, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+plot(df$Seasons, df$Rented.Bike.Count, main = "Bikes rented for season",
+     xlab = "Season", ylab = "Rented Bikes")
 ```
 
 We can see the average number of bikes rented in Winter is much less than the average number in the other seasons (because of the low temperatures). 
 Summer has the highest average, while Autumn has a higher average than Spring probably because it benefits from the hot climate still present for a few weeks at the end of the summer season.
 
-```{r,echo=FALSE}
-df$Seasons <- as.factor(df$Seasons)
-plot(df$Seasons,df$Daily.Rented.Bikes,main="Bikes rented for season",xlab="Season",ylab="Rented Bikes")
-```
 
-Non Holiday days are characterized by an average of rented bikes greater than that of Holidays days. This is due to the small number of Holiday days in the year
+
+Non Holiday days are characterized by an average of rented bikes greater than that of Holidays days. This is due to the small number of Holiday days in the year.
+
 ```{r,echo=FALSE}
 df$Holiday <- as.factor(df$Holiday)
-plot(df$Holiday,df$Daily.Rented.Bikes,main="Bikes rented for holiday",xlab="Holiday",ylab="Rented Bikes")
+plot(df$Holiday, df$Rented.Bike.Count, main = "Bikes rented for holiday",
+     xlab = "Holiday", ylab = "Rented Bikes")
 ```
 
 We add a factor variable related to the hour time
 ```{r}
-df$Time <- ifelse(df$Hour>=18, 'Evening',
-                  ifelse(df$Hour>=12, 'Afternoon',
-                         ifelse(df$Hour>=6, 'Morning',
-                                ifelse(df$Hour>=0, 'Night'))))
-df$Time <- as.factor(df$Time)
+df$Time <- ifelse(df$Hour >= 18, "Evening",
+                  ifelse(df$Hour >= 12, "Afternoon",
+                         ifelse(df$Hour >= 6, "Morning",
+                                ifelse(df$Hour >= 0, "Night"))))
+df$Time <- factor(df$Time, levels = c("Morning", "Afternoon", "Evening", "Night"))
 ```
 
 
 ```{r}
-plot(df$Time,df$Rented.Bike.Count,main="Bikes rented for Time",xlab="Time",ylab="Rented Bikes")
+plot(df$Time, df$Rented.Bike.Count, main = "Bikes rented for Time",
+     xlab = "Time", ylab = "Rented Bikes")
 ```
 
-*********************
-Vedere grafici delle situazioni ambientali gioraliere a seconda del giorno/stagione
-Fare grafico per vedere il numero medio di bici per ora
-***********************
 
-We get dummy variables from the categorial features
+Create more aggregate columns by day, each with a specific aggregation function.
 ```{r}
-library(fastDummies)
-df$Holiday<-ifelse(df$Holiday=="Holiday",1,0)
-df <- dummy_cols(df, select_columns = c('Seasons','Time'))
+pivot.table$Max.Day.Solar.Radiation <- aggregate(Solar.Radiation..MJ.m2.~Date,
+                                                df, FUN = max)$Solar.Radiation..MJ.m2.
+pivot.table$Max.Day.Wind.Speed <- aggregate(Wind.speed..m.s.~Date,
+                                                df, FUN = max)$Wind.speed..m.s.
+pivot.table$Max.Day.Rainfall <- aggregate(Rainfall.mm.~Date,
+                                                df, FUN = max)$Rainfall.mm.
+pivot.table$Max.Day.Snowfall <- aggregate(Snowfall..cm.~Date,
+                                                df, FUN = max)$Snowfall..cm.
+pivot.table$Avg.Day.Humidity <- aggregate(Humidity...~Date,
+                                          df, FUN = mean)$Humidity...
+pivot.table$Avg.Day.Visibility <- aggregate(Visibility..10m.~Date,
+                                            df, FUN = mean)$Visibility..10m.
+```
+
+
+
+```{r}
+##############################
+# Weather and time of the year
+##############################
+
+plot(df$Date, df$Temperature..C., xlab = "Date", type = "l",
+     ylab = "Temperature", main = "Temperature (°C) over the year")
+
+plot(df$Date, df$Dew.point.temperature..C., xlab = "Date", type = "l",
+     ylab = "Dew Point temp.", main = "Dew Point Temp. (°C) over the year")
+
+# data from pivot.table (solar radiation has MAX function)
+plot(pivot.table$Date, pivot.table$Max.Day.Solar.Radiation, xlab = "Date",
+     ylab = "Solar Radiation", main = "Daily max Solar radiation (MJ/m2)", type = "l")
+
+# data from pivot.table (humidity has AVG function)
+plot(pivot.table$Date, pivot.table$Avg.Day.Humidity, xlab = "Date", ylab = "Humidity",
+     main = "Avg daily Humidity (%) over the year", type = "l")
+
+# data from pivot.table (visibility has AVG function)
+plot(pivot.table$Date, pivot.table$Avg.Day.Visibility, xlab = "Date",
+     ylab = "Avg daily Visibility 10m", main = "Visibility (m) over the year", type = "l")
+
+# data from pivot.table (wind speed has MAX function)
+plot(pivot.table$Date, pivot.table$Max.Day.Wind.Speed, xlab = "Date",
+     ylab = "Wind speed", main = "Max daily Wind speed (m/s) over the year", type = "l")
+
+# data from pivot.table (rainfall has MAX function)
+plot(pivot.table$Date, pivot.table$Max.Day.Rainfall, xlab = "Date",
+     ylab = "Rainfall", main = "Max daily Rainfall (mm) over the year", type = "l")
+
+# data from pivot.table (snowfall has MAX function)
+plot(pivot.table$Date, pivot.table$Max.Day.Snowfall, xlab = "Date",
+     ylab = "Snowfall", main = "Max daily Snowfall (cm) over the year", type = "l")
+```
+
+
+## 3. FEATURE ENGINEERING
+
+
+As shown above, "functioning day" states whether data for that specific time stamp (day, hour) is available or not. Therefore, we discard the examples that have "NO". We then drop the column because it becomes meaningless.
+```{r}
+df <- df[df[,"Functioning.Day"] == "Yes",]
+df <- subset(df, select = -c(Functioning.Day) )
+
+# We also drop the column date
+df <- subset(df, select = -c(Date, Time) ) # !!!!!! TIME
 ```
 
 
 ```{r}
-library(data.table)
-setnames(df,old = c("Seasons_Autumn","Seasons_Spring","Seasons_Summer","Seasons_Winter",
-                    "Time_Afternoon","Time_Evening","Time_Morning","Time_Night"),new = c("Autumn","Spring","Summer","Winter","Afternoon","Evening","Morning","Night"))
+# Convert the factor "Holiday" into binary encoding
+df$Holiday<-ifelse(df$Holiday == "Holiday", 1, 0)
+df$Holiday <- factor(df$Holiday, levels = c(0, 1))
 ```
+
+```{r}
+# Tranform the response variable in order to make it more akin to a normal distribution
+df$Rented.Bike.Count <- log(df$Rented.Bike.Count)
+```
+
+
+
+We gather the dummy variables from the categorial features
+
+```{r}
+#df <- dummy_cols(df, select_columns = c("Seasons"))
+#df <- subset(df, select = -c(Seasons) )
+
+#df <- dummy_cols(df, select_columns = c("Time"))
+
+
+#setnames(df,
+#         old = c("Seasons_Autumn", "Seasons_Spring", "Seasons_Summer", "Seasons_Winter"),
+#         new = c("Autumn", "Spring", "Summer", "Winter"))
+#setnames(df,
+#         old = c("Time_Afternoon", "Time_Evening", "Time_Morning", "Time_Night"),
+#         new = c("Afternoon", "Evening", "Morning", "Night"))
+
+```
+
 
 
 ```{r}
 df
 ```
+
+
+## 4. ANALYSIS
+
+First we want to assess the extent of mutual relationships across numerical variables
+
+
+Covariance matrix
+```{r}
+cov(df[,1:10])
+```
+
+
+
+Correlation Matrix
+
+The major highlight here is the very high correlation ($0.91$) between *Temperature* and *Dew Point*
+```{r}
+df.rcorr <- rcorr(as.matrix(df[,1:10]))
+
+df.corr.coeff <- df.rcorr$r
+df.corr.p <- df.rcorr$P
+
+df.corr.coeff
+df.corr.p
+	
+corrplot(cor(df[,1:10]))
+```
+
+```{r}
+#Convert the actual dataframe into the proper type
+df <- as.data.frame(df)
+# Reset index
+rownames(df) <- 1:nrow(df)
+```
+
+
+
+### Multiple linear regression
+
+```{r}
+reg.prova <- lm(Rented.Bike.Count~., data = df)
+summary(reg.prova)
+```
+
+This first attempt shows how most of the regressors show value significantly different from zero, even if their estimates are most lower that $1e-1$ in absolute value.
+Moreover, this model achieves a $R^2 = 0.6064$. Deeper analysis on this model is provided below.
+
+
+#### Diagnostic - Multiple Linear Regression
+
+Check for heteroscedasticity
+
+```{r}
+par(mfrow = c(1, 2))
+
+plot(reg.prova, 2)
+plot(density(reg.prova$residuals))
+curve(dnorm(x, mean = mean(reg.prova$residuals), sd = sd(reg.prova$residuals)), add = T, col = 2)
+```
+
+From the plot of the residuals against the fitted values we can see the mean is very close to zero.
+Moreover, apart from 3 outliers, the comparison between a normal distribution and the density estimation of the residuals shows a fair overlapping between the two. This result is confirmed also when looking at the QQ plot.
+
+```{r}
+plot(reg.prova)
+```
+
+Variance Inflation Factor
+
+To assess whether there is a presence of collinearity. From the correlation matrix shown in the previous part of the report, we could see that *Dew Point* and *Temperature* are highly correlated. This is reflected also when looking at the at the VIF. These two variables show the most extreme values in terms of VIF.
+From now on we will consider only *Temperature*.
+
+```{r}
+vif(reg.prova)
+```
+
+Analysis of variance
+
+From the consideration of the ANOVA with respect to the factor variables, the procedures utilized are (1) Bartlett's test on equal variances (2) Fisher's test and (3) Turkey's method.
+From the first we can already reject the null hypothesis of equal variances between different levels of the factor *Seasons*. Accordingly, we obtain the same result when it comes to the Fisher test.
+Finally, in order to have a graphical representation of the impact of the difference levels of this factor variable on the target variables, we considered the Turkey's method, from which we can see the differences in means between groups.
+```{r}
+bartlett.test(df$Rented.Bike.Count ~ df$Seasons)
+
+aov.seasons1 <- aov(df$Rented.Bike.Count ~ df$Seasons)
+summary(aov.seasons1)
+
+# Conditioning plot
+coplot(df$Rented.Bike.Count ~ df$Temperature..C. | df$Seasons)
+
+
+turkey.seasons1 <- TukeyHSD(aov.seasons1)
+turkey.seasons1
+plot(turkey.seasons1)
+```
+
+```{r}
+#####
+# output of the first analysis:
+# (1) remove outliers
+df <- df[-c(3950, 4987, 6454),]
+
+# (2) Remove Dew Point Temperature
+df <- subset(df, select = -c(Dew.point.temperature..C.))
+df <- as.data.frame(df)
+
+dim(df)
+```
+
+
+
+### Multiple linear regression (2nd attempt)
+
+This second attempt comes from the changes applied after the thoughts described above.
+
+```{r}
+reg.out2 <- lm(Rented.Bike.Count~., data = df)
+summary(reg.out2)
+```
+
+```{r}
+plot(reg.out2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
