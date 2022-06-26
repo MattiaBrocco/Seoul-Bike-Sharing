@@ -2,7 +2,7 @@
 title: "Seoul Bike Sharing"
 author:
     - Brocco Mattia, 2044714
-    - Magliani Jacopo, XXXXXXX
+    - Magliani Jacopo, 2040912
 output:
   html_document: default
   pdf_document: default
