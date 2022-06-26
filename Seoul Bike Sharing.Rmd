@@ -31,7 +31,6 @@ library(fastDummies)
 
 ```{r, echo = FALSE}
 #We found some problems with the make.names(...) function. thus we removed the '°' symbol from temperature.
-
 df <- read.csv("SeoulBikeData.csv",header=TRUE)
 str(df)
 ```
@@ -82,13 +81,9 @@ From this first plot we see how the target variable distribution is left-skewed 
 
 ```{r}
 # Create a new data frame to store aggregates of variables by date
-
 df$Date <- as.Date(df$Date, format = "%d/%m/%Y")
-
 pivot.table <- aggregate(Rented.Bike.Count~Date, df, FUN = mean)
 ```
-
-
 
 
 ```{r,echo=FALSE}
@@ -102,7 +97,6 @@ We can see the average number of bikes rented for day is low in Winter, increase
 ```{r,echo=FALSE}
 # Convert "Seasons" as factor and set a precise ordering
 df$Seasons <- factor(df$Seasons, levels = c("Spring", "Summer", "Autumn", "Winter"))
-
 plot(df$Seasons, df$Rented.Bike.Count, main = "Bikes rented for season",
      xlab = "Season", ylab = "Rented Bikes")
 ```
@@ -152,39 +146,50 @@ pivot.table$Avg.Day.Visibility <- aggregate(Visibility..10m.~Date,
                                             df, FUN = mean)$Visibility..10m.
 ```
 
+```{r}
+df
+```
+
+****************************************
+I primi 2 plot della temperatura e della Dew fatti su df non sono utilizzabili
+Questi sui valori medi sono più chiari
+***************************************
+```{r}
+pivot.table$Avg.Day.Temperature <- aggregate(Temperature.C.~Date,
+                                            df, FUN = mean)$Temperature.C.
+pivot.table$Avg.Day.Dew <- aggregate(Dew.point.temperature.C.~Date,
+                                            df, FUN = mean)$Dew.point.temperature.C.
+
+plot(pivot.table$Date, pivot.table$Avg.Day.Temperature, xlab = "Date",
+     ylab = "Avg Temperature", main = "Daily avg Temperature (°C)", type = "l")
+plot(pivot.table$Date, pivot.table$Avg.Day.Dew, xlab = "Date",
+     ylab = "Avg Dew point Temperature", main = "Daily avg Dew point Temperature (°C)", type = "l")
+```
 
 
 ```{r}
 ##############################
 # Weather and time of the year
 ##############################
-
 plot(df$Date, df$Temperature..C., xlab = "Date", type = "l",
      ylab = "Temperature", main = "Temperature (°C) over the year")
-
 plot(df$Date, df$Dew.point.temperature..C., xlab = "Date", type = "l",
      ylab = "Dew Point temp.", main = "Dew Point Temp. (°C) over the year")
-
 # data from pivot.table (solar radiation has MAX function)
 plot(pivot.table$Date, pivot.table$Max.Day.Solar.Radiation, xlab = "Date",
      ylab = "Solar Radiation", main = "Daily max Solar radiation (MJ/m2)", type = "l")
-
 # data from pivot.table (humidity has AVG function)
 plot(pivot.table$Date, pivot.table$Avg.Day.Humidity, xlab = "Date", ylab = "Humidity",
      main = "Avg daily Humidity (%) over the year", type = "l")
-
 # data from pivot.table (visibility has AVG function)
 plot(pivot.table$Date, pivot.table$Avg.Day.Visibility, xlab = "Date",
      ylab = "Avg daily Visibility 10m", main = "Visibility (m) over the year", type = "l")
-
 # data from pivot.table (wind speed has MAX function)
 plot(pivot.table$Date, pivot.table$Max.Day.Wind.Speed, xlab = "Date",
      ylab = "Wind speed", main = "Max daily Wind speed (m/s) over the year", type = "l")
-
 # data from pivot.table (rainfall has MAX function)
 plot(pivot.table$Date, pivot.table$Max.Day.Rainfall, xlab = "Date",
      ylab = "Rainfall", main = "Max daily Rainfall (mm) over the year", type = "l")
-
 # data from pivot.table (snowfall has MAX function)
 plot(pivot.table$Date, pivot.table$Max.Day.Snowfall, xlab = "Date",
      ylab = "Snowfall", main = "Max daily Snowfall (cm) over the year", type = "l")
@@ -198,7 +203,6 @@ As shown above, "functioning day" states whether data for that specific time sta
 ```{r}
 df <- df[df[,"Functioning.Day"] == "Yes",]
 df <- subset(df, select = -c(Functioning.Day) )
-
 # We also drop the column date
 df <- subset(df, select = -c(Date, Time) ) # !!!!!! TIME
 ```
@@ -222,17 +226,13 @@ We gather the dummy variables from the categorial features
 ```{r}
 #df <- dummy_cols(df, select_columns = c("Seasons"))
 #df <- subset(df, select = -c(Seasons) )
-
 #df <- dummy_cols(df, select_columns = c("Time"))
-
-
 #setnames(df,
 #         old = c("Seasons_Autumn", "Seasons_Spring", "Seasons_Summer", "Seasons_Winter"),
 #         new = c("Autumn", "Spring", "Summer", "Winter"))
 #setnames(df,
 #         old = c("Time_Afternoon", "Time_Evening", "Time_Morning", "Time_Night"),
 #         new = c("Afternoon", "Evening", "Morning", "Night"))
-
 ```
 
 
@@ -259,10 +259,8 @@ Correlation Matrix
 The major highlight here is the very high correlation ($0.91$) between *Temperature* and *Dew Point*
 ```{r}
 df.rcorr <- rcorr(as.matrix(df[,1:10]))
-
 df.corr.coeff <- df.rcorr$r
 df.corr.p <- df.rcorr$P
-
 df.corr.coeff
 df.corr.p
 	
@@ -295,7 +293,6 @@ Check for heteroscedasticity
 
 ```{r}
 par(mfrow = c(1, 2))
-
 plot(reg.prova, 2)
 plot(density(reg.prova$residuals))
 curve(dnorm(x, mean = mean(reg.prova$residuals), sd = sd(reg.prova$residuals)), add = T, col = 2)
@@ -324,14 +321,10 @@ From the first we can already reject the null hypothesis of equal variances betw
 Finally, in order to have a graphical representation of the impact of the difference levels of this factor variable on the target variables, we considered the Turkey's method, from which we can see the differences in means between groups.
 ```{r}
 bartlett.test(df$Rented.Bike.Count ~ df$Seasons)
-
 aov.seasons1 <- aov(df$Rented.Bike.Count ~ df$Seasons)
 summary(aov.seasons1)
-
 # Conditioning plot
 coplot(df$Rented.Bike.Count ~ df$Temperature..C. | df$Seasons)
-
-
 turkey.seasons1 <- TukeyHSD(aov.seasons1)
 turkey.seasons1
 plot(turkey.seasons1)
@@ -342,11 +335,9 @@ plot(turkey.seasons1)
 # output of the first analysis:
 # (1) remove outliers
 df <- df[-c(3950, 4987, 6454),]
-
 # (2) Remove Dew Point Temperature
 df <- subset(df, select = -c(Dew.point.temperature..C.))
 df <- as.data.frame(df)
-
 dim(df)
 ```
 
@@ -364,8 +355,6 @@ summary(reg.out2)
 ```{r}
 plot(reg.out2)
 ```
-
-
 
 
 
