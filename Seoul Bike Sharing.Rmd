@@ -15,7 +15,7 @@ output:
 The study hereby presented concerns the topic of demand forecasting, and the case study at hand entails the industry of bike sharing for the city during a time span of one year (between 2017 and 2018) in Seoul (South Korea).
 Data is available at "https://archive.ics.uci.edu/ml/index.php" 
 
-This project aims at assessing to which extent it is possible to predict the demand for bikes given the data at hand in order, ultimately, to provide some additional insights on the public sharing industry.
+This project aims at assessing to which extent it is possible to predict the demand for bikes given the data at hand in order to, ultimately, provide some additional insights on the public sharing industry.
 For the sake of clearness, the target variable will be called "Rented.Bike.Count", and it is inherently a non-negative continuous variable.
 
 ```{r, include = FALSE}
@@ -30,7 +30,7 @@ library(fastDummies)
 
 
 ```{r, echo = FALSE}
-#We found some problems with the make.names(...) function. thus we removed the '°' symbol from temperature.
+#We found some problems with the make.names(...) function. thus we removed the '°' symbol from temperature in the csv file.
 df <- read.csv("SeoulBikeData.csv",header=TRUE)
 str(df)
 ```
@@ -58,7 +58,7 @@ There are 18 holiday days in the dataset (New Years Eve, Buddha's birthday, Day 
 print(c(unique(df[df[,"Holiday"]=="Holiday",]["Date"])), max.levels = 0)
 ```
 
-While it is useful to have separated data for each hour, we won't be able to understand whether the target variable is influenced by a specific holiday (e.g. New Year's Eve) given that we only have data for one year. What we will show, however, is whether the fact that one day is holiday or not has an impact on the target variable 
+While it is useful to have separated data for each hour, we won't be able to understand whether the target variable is influenced by a specific holiday (e.g. New Year's Eve) given that we only have data for one year. What we will show, however, is whether the fact that one day is holiday or not has an impact on the target variable.
 
 
 The feature "Functioning.day" indicates if there is data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from 7 am onwards.
@@ -75,7 +75,7 @@ hist(df$Rented.Bike.Count, main = "Rented Bikes count")
 boxplot(df$Rented.Bike.Count, main = "Rented Bikes count", horizontal = T)
 ```
 
-From this first plot we see how the target variable distribution is left-skewed and pretty farn from a normal distribution (consdering also the sample size).
+From this first plot we see how the target variable distribution is left-skewed and pretty far from a normal distribution (consdering also the sample size).
 
 
 
@@ -92,7 +92,7 @@ plot(pivot.table$Date, pivot.table$Rented.Bike.Count,
      main = "Bikes rented for day", xlab = "Day", ylab = "Rented Bikes")
 ```
 
-We can see the average number of bikes rented for day is low in Winter, increase in Spring, reaches the maximum in June, there is a slight decrease until August (probably some users go outside of the city during the Summer), increases again in September (end of the summer holidays) and then starts decreasing in October.
+We can see the average number of bikes rented for day is low in Winter, increases in Spring, reaches the maximum in June, slightly decreases from June to August (probably some users go outside of the city during the summer break that goes from 22/06 to 31/08), increases again in September (end of the summer break) and then starts decreasing in October.
 
 ```{r,echo=FALSE}
 # Convert "Seasons" as factor and set a precise ordering
@@ -151,8 +151,7 @@ df
 ```
 
 ****************************************
-I primi 2 plot della temperatura e della Dew fatti su df non sono utilizzabili
-Questi sui valori medi sono più chiari
+Questi sono fatti sui valori medi di Temperature e Dew
 ***************************************
 ```{r}
 pivot.table$Avg.Day.Temperature <- aggregate(Temperature.C.~Date,
@@ -166,14 +165,13 @@ plot(pivot.table$Date, pivot.table$Avg.Day.Dew, xlab = "Date",
      ylab = "Avg Dew point Temperature", main = "Daily avg Dew point Temperature (°C)", type = "l")
 ```
 
-
 ```{r}
 ##############################
 # Weather and time of the year
 ##############################
-plot(df$Date, df$Temperature..C., xlab = "Date", type = "l",
+plot(df$Date, df$Temperature.C., xlab = "Date", type = "l",
      ylab = "Temperature", main = "Temperature (°C) over the year")
-plot(df$Date, df$Dew.point.temperature..C., xlab = "Date", type = "l",
+plot(df$Date, df$Dew.point.temperature.C., xlab = "Date", type = "l",
      ylab = "Dew Point temp.", main = "Dew Point Temp. (°C) over the year")
 # data from pivot.table (solar radiation has MAX function)
 plot(pivot.table$Date, pivot.table$Max.Day.Solar.Radiation, xlab = "Date",
