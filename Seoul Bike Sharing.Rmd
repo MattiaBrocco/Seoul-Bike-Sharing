@@ -4,7 +4,8 @@ author:
     - Brocco Mattia, 2044714
     - Magliani Jacopo, 2040912
 output:
-  html_document: default
+  html_document:
+    css: style.css
   pdf_document: default
   df_print: paged
 ---
@@ -242,9 +243,12 @@ XY$Holiday<-ifelse(XY$Holiday == "Holiday", 1, 0)
 XY$Holiday <- factor(XY$Holiday, levels = c(0, 1))
 ```
 
+
+
 ```{r}
 # Tranform the response variable in order to make it more akin to a normal distribution
 XY$Rented.Bike.Count <- log(XY$Rented.Bike.Count)
+hist(XY$Rented.Bike.Count, main = "Log of Rented Bikes count")
 ```
 
 
@@ -276,7 +280,7 @@ First we want to assess the extent of mutual relationships across numerical vari
 
 Covariance matrix
 ```{r}
-cov(XY[, 1:10])
+round(cov(XY[, 1:10]), 2)
 ```
 
 Correlation Matrix
@@ -305,8 +309,8 @@ IMPORTANT ARTICLE: [here](https://medium.com/analytics-vidhya/how-to-proceed-fro
 ### 4.1. Multiple linear regression
 
 ```{r}
-reg.prova <- lm(Rented.Bike.Count~., data = XY)
-summary(reg.prova)
+reg.init <- lm(Rented.Bike.Count~., data = XY)
+summary(reg.init)
 ```
 
 This first attempt shows how most of the regressors show value significantly different from zero, even if their estimates are most lower that $1e-1$ in absolute value.
@@ -315,12 +319,13 @@ Moreover, this model achieves a $R^2 = 0.6064$. Deeper analysis on this model is
 
 #### 4.1.1. Diagnostic - Multiple Linear Regression
 
-Check for normal distribuion of the error terms.
+Check for normal distribution of the error terms.
 ```{r}
 par(mfrow = c(1, 2))
-plot(reg.prova, 2)
-plot(density(reg.prova$residuals))
-curve(dnorm(x, mean = mean(reg.prova$residuals), sd = sd(reg.prova$residuals)), add = T, col = 2)
+plot(reg.init, 2)
+plot(density(reg.init$residuals))
+curve(dnorm(x, mean = mean(reg.init$residuals), sd = sd(reg.init$residuals)),
+      add = T, col = 2)
 ```
 
 From the plot of the residuals against the fitted values we can see the mean is very close to zero.
@@ -329,7 +334,7 @@ Finally, we can also show the absence of a prominent funnel shape in the residua
 
 ```{r}
 par(mfrow = c(2, 2))
-plot(reg.prova)
+plot(reg.init)
 ```
 
 Variance Inflation Factor
@@ -338,7 +343,7 @@ To assess whether there is a presence of collinearity. From the correlation matr
 From now on we will consider only *Temperature*.
 
 ```{r}
-vif(reg.prova)
+vif(reg.init)
 ```
 
 Analysis of variance
@@ -445,12 +450,11 @@ The following part is aimed at deepen the study under two directories:
 * Variable selection
 * Regularization
 
-
 ```{r}
 # Define a function that plots the results of a variable selection procedure
 selection.result <- function(data) {
   
-  par(mfrow = c(2,2))
+  par(mfrow = c(2, 2))
   
   # (1) Residual sum of squares
   plot(data$rss, xlab = "Number of Variables",
@@ -484,55 +488,100 @@ reg.best.subset <- regsubsets(Rented.Bike.Count~., data = XY2,
 best.subset.summary <- summary(reg.best.subset)
 
 selection.result(best.subset.summary)
+
+par(mfrow = c(1, 1))
+plot(reg.best.subset, scale = "adjr2")
 ```
 
 ### 5.2. Variable selection - Forward Selection
-
 ```{r}
 reg.fwd.select <- regsubsets(Rented.Bike.Count~., data = XY2,
                              nvmax = dim(XY)[2] - 1, method = "forward")
 fwd.select.summary <- summary(reg.fwd.select)
 
 selection.result(fwd.select.summary)
-```
 
 
-```{r}
-as.data.frame(fwd.select.summary$which)[which.max(fwd.select.summary$adjr2),]
+par(mfrow = c(1, 1))
+plot(reg.fwd.select, scale = "adjr2")
 ```
 
 ### 5.3. Variable selection - Backward Selection
-
-```{r}
-mod.F <- lm(Rented.Bike.Count~., data = XY2)
-reg.bkw.select2 <- step(mod.F, direction = "backward",
-                        k = log(dim(XY)[2]), trace = 0, steps = 1000)
-summary(reg.bkw.select2)
-```
-
-
-
 ```{r}
 reg.bkw.select <- regsubsets(Rented.Bike.Count~., data = XY2,
                              nvmax = dim(XY)[2] - 1, method = "backward")
 bkw.select.summary <- summary(reg.bkw.select)
 
 selection.result(bkw.select.summary)
+
+par(mfrow = c(1, 1))
+plot(reg.bkw.select, scale = "adjr2")
+```
+
+So far, we have considered three different approaches for feature selection that either exploit an exhaustive search or greedy step-wise improvements.
+As a matter of fact, *best subset selection* tries all the combination of variables per each model size (number of regressors), selects the best combination per size and yields the best size (with the corresponding best subset of predictors).
+The other two, namely **backward stepwise** and **forward stepwise** perform greedy steps (under different metrics, e.g. Bayesian Information Criterion, Adjusted $R^{2}$, etc.) while removing (the former) or adding (the latter) one regressor at a time.
+
+For the scope of the analysis we can see that the three methods yield the same result under each of the metrics considered (BIC, $Adj. R^{2}$, Mallow's C). This does not stop to the size of the subset of regressors, but also on the choice of the regressors themselves.
+
+The equivalent behavior between forward and backward step-wise selection can be expected, but the same pattern shown by the best subset is an additional corroboration of the experimentation of variable selection.
+Therefore, for this part of the report, we will set as a second baseline the model obtained with Best Subset Selection, under the $Adj. R^{2}$ metric, which is:
+
+```{r}
+best.subset.summary$which[which.max(best.subset.summary$adjr2),]
 ```
 
 
+The above subset of regressors is further tried out using 10-fold cross validation. This shows again the the best subset yields a model with 8 predictors.
+
 ```{r}
-as.data.frame(bkw.select.summary$which)[which.max(bkw.select.summary$adjr2),]
+set.seed(42)
+folds <- sample(1:10, nrow(XY2), replace = TRUE)
+
+cv.errors <- matrix(NA, 10, dim(XY2)[2] - 1)
+colnames(cv.errors) <- 1:(dim(XY2)[2] - 1)
+
+
+for(j in 1:10){
+  best.fit <- regsubsets(Rented.Bike.Count~.,
+                         data = XY2[folds!=j,], nvmax = (dim(XY2)[2] - 1))
+  test.mat <- model.matrix(Rented.Bike.Count~., data = XY2[folds == j,])
+  for(i in 1: (dim(XY2)[2] - 1)){
+    coefi <- coef(best.fit, id=i)
+    pred <- test.mat[, names(coefi)]%*%coefi
+    cv.errors[j,i] <- mean( (XY2$Rented.Bike.Count[folds == j] - pred)^2)
+  }
+}
+
+mean.cv.errors <- apply(cv.errors, 2, mean) 
+
+plot(mean.cv.errors, type = "b",
+     main = "Avg 10-fold CV errors",
+     xlab = "Number of regressors")
+
+points(which.min(mean.cv.errors),
+       mean.cv.errors[which.min(mean.cv.errors)],
+       col = "red", cex = 2, pch = 20)
 ```
 
-
 ```{r}
+reg.best.subset.out <- lm(Rented.Bike.Count~.-Visibility..10m., data = XY2)
+summary(reg.best.subset.out)
 # Fit the best model and do the anova test (look at article for reference)
-#anova(reg.bkw.select, reg.rain.snow.flag)
+anova(reg.best.subset.out, reg.rain.snow.flag)
 ```
 
+From the above ANOVA test, in which the null hypothesis can be formulated as: *The improvement in Adjusted R-squared is not statistically significant*.
+We can notice how $p=0.6727$, thus much larger than $0.05$ associated to a 95% confidence. This means we don't reject the null hypothesis: in other words, by removing one variable we do not obtain a statistically significant improvement in the variance explained by the new model.
 
 ### 5.4. Train-test split
+In the following part of the report we will analyze two shrinkage techniques:
+
+* LASSO (also known as L1 penalty)
+* Ridge (also known as L2 penalty or Weight Decay)
+
+To provide a more reliable assessment of the performance of these regularization strategies, the implementation will again stick to the cross-validation approach.
+
 ```{r}
 # design matrix
 X.matrix <- model.matrix(Rented.Bike.Count~., XY2)
@@ -553,45 +602,172 @@ X.test <- X.matrix[test, ]
 y.train <- y.vector[train]
 y.test <- y.vector[test]
 
-print( c( dim(X.train), dim(X.test) ) )
+print(dim(X.train))
+print(dim(X.test))
 ```
 
 
+```{r}
+adjr2.function <- function(X.ref, v.pred, v.true){
+  
+  # Parameters
+  # ----------
+  # X.ref  : data matrix of the regressors
+  # v.pred : y.hat (array of values predicted by the model)
+  # v.true : ground truth array of values
+  
+  rss <- sum((v.true - v.pred)^2)
+  tss <- sum((v.true - mean(v.true))^2)
+
+  r2 <- (tss - rss)/tss
+  
+  adjr2 <- 1 - (1 - r2)*( (length(v.true) - 1)/(length(v.true) - dim(X.ref)[2] - 1) )
+    
+  output <- t(matrix(c(round(adjr2, 4),
+                       round(r2, 4)) ) )
+  output <- as.data.frame(output)
+  colnames(output) <- c("Adj.R2", "R2")
+  rownames(output) <- c("VALUE")
+  return( output )
+  }
+```
 
 ### 5.5. Regularization tecnhiques: LASSO
 
 ```{r}
-# WORKING ON IT...
+# LASSO with CV
+lambda.lasso <- seq(0, 10, length = 200)
+
+
+set.seed(42)
+# alpha = 1: LASSO
+lasso.cv <- cv.glmnet(X.train, y.train, alpha = 1,
+                      nfold = 10, lambda = lambda.lasso)
+
+plot(lasso.cv$lambda, lasso.cv$cvm, type = "l",
+     main = "Training MSE of 10-fold CV Ridge",
+     xlab = expression(lambda), ylab = "",
+     ylim = c(0, max(lasso.cv$cvm)*1.1))
+
+# To ensure a minimum extent of regularization, best lambda
+# is chosen through the max function
+best.lambda.lasso <- max(0.1, rev(lasso.cv$lambda)[2])
+best.lambda.lasso
 ```
 
+```{r}
+lasso.pred.test <- predict(glmnet(X.train, y.train, alpha = 1,
+                                  lambda = best.lambda.lasso),
+                      s = best.lambda.lasso,
+                      newx = X.test)
+
+mean((lasso.pred.test - y.test)^2)
+
+# Fit on the whole set of data
+final.lasso <- glmnet(X.matrix, y.vector, alpha = 1,
+                      lambda = best.lambda.lasso)
+final.lasso.pred <- predict(final.lasso, newx = X.matrix,
+                            s = best.lambda.lasso)
+
+mean((final.lasso.pred - y.vector)^2)
+
+# Compute the R2 and the Adjusted R2
+noquote(c("R2: ",
+          adjr2.function(X.matrix, final.lasso.pred, y.vector)$R2,
+          "Adj. R2: ",
+          adjr2.function(X.matrix, final.lasso.pred , y.vector)$Adj.R2) )
+```
+
+
+
+[Paper on feature selection](https://www.stat.cmu.edu/~ryantibs/papers/bestsubset.pdf)
 
 
 ### 5.6. Regularization tecnhiques: Ridge
 
 ```{r}
 # Ridge with CV
-lambda.ridge <- 10^seq(10, -2, length = 100)
+lambda.ridge <- seq(0, 10, length = 200)
 
-ridge.mod <- glmnet(X.matrix, y.vector, alpha = 0, lambda = lambda.ridge)
 
 set.seed(42)
+# alpha = 0: Ridge
+ridge.cv <- cv.glmnet(X.train, y.train, alpha = 0,
+                      nfold = 10, lambda = lambda.ridge)
 
-ridge.cv <- cv.glmnet(X.train, y.train, alpha = 0, nfold = 10, lambda = lambda.ridge)
+plot(ridge.cv$lambda, ridge.cv$cvm, type = "l",
+     main = "Training MSE of 10-fold CV Ridge",
+     xlab = expression(lambda), ylab = "",
+     ylim = c(0, max(ridge.cv$cvm)*1.1))
 
-plot(ridge.cv)
+# To ensure a minimum extent of regularization, best lambda
+# is chosen through the max function
+best.lambda.ridge <- max(0.1, ridge.cv$lambda.1se)
+best.lambda.ridge
 ```
 
+We can see how as the intensity of the Ridge shrinkage method ($lambda$) increases, the standard error increases as well. This behavior is expected as we are adding more bias into the model, which in turn is not overfitting at all.
+However, it is clear to see the effect of the regularization method from the effect that it has on the test error by looking at the difference between the two $MSE$ shown below.
 
 
 ```{r}
-ridge.pred <- predict(ridge.mod, s = ridge.cv$lambda.min, newx = X.test)
+ridge.pred.test <- predict(glmnet(X.train, y.train, alpha = 0,
+                                  lambda = best.lambda.ridge),
+                      s = best.lambda.ridge,
+                      newx = X.test)
 
-mean((ridge.pred - y.test)^2)
+mean((ridge.pred.test - y.test)^2)
 
-# fit the coefficient with lambda=bestlam on all the data
+# Fit on the whole set of data
+final.ridge <- glmnet(X.matrix, y.vector, alpha = 0,
+                      lambda = ridge.cv$lambda.1se)
+final.ridge.pred <- predict(final.ridge, newx = X.matrix,
+                            s = best.lambda.ridge)
 
-ridge.reg <- glmnet(X.matrix, y.vector, alpha = 0)
-predict(ridge.reg, type = "coefficients", s = ridge.cv$lambda.min)
+mean((final.ridge.pred - y.vector)^2)
+
+# Compute the R2 and the Adjusted R2
+noquote(c("R2: ",
+          adjr2.function(X.matrix, final.ridge.pred, y.vector)$R2,
+          "Adj. R2: ",
+          adjr2.function(X.matrix, final.ridge.pred, y.vector)$Adj.R2) )
 ```
+
+
+Since both LASSO and RIDGE regressions introduce bias in the coefficients by design, statistical tests becomes inappropriate. Thus we will rely on the $Adj. R^{2}$ to assess whether to keep going with the current model or not.
+
+Moreover, we can notice how the RIDGE penalty outperforms LASSO under the above mentioned metric. This behavior is expected as the "aggressiveness" of the LASSO regression in higher (the penalty is scales with the sign of the coefficients, rather than linearly with the euclidean norm, as it happens for the L2).
+This difference can be shown when considering how the number of non zero components varies with respect to the intensity of the regularization (the comparison is eased since for both, as ${\lambda}$ increases the regularization "intensity" increases). As a matter of facts, we see how the components never get to zero for the considered grid of parameters with a L2 norm, while for the L1 penalty, all parameters get to zero very fast.
+
+
+```{r}
+plot(lasso.cv$lambda, lasso.cv$nzero, type = "b", col = "green",
+     xlab = expression(lambda), ylab = "# of non-zero components",
+     main = "Number of non-zero components against regularization intensity")
+lines(ridge.cv$lambda, ridge.cv$nzero, type = "b", col = "blue")
+legend(25, 7, c("RIDGE", "LASSO"), col = c("blue", "green"),
+       lty = 1, cex = 0.8)
+```
+
+
+## 6. Model Selection
+
+BEST MODELLO: best subset selection (stesso R^2 ma con parametri in meno)
+
+
+- SE coefficients
+- VIF
+- Check residuals
+- predicted output
+- exp predicted output
+
+
+## 7. Conclusion
+
+
+- regularization not useful, anzi the opposite
+- recall trattamento dati (log target, collinearity, etc.)
+
+
 
 
