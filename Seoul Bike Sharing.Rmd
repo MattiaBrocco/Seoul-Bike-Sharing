@@ -97,15 +97,18 @@ print(c(df[df$Date == "06/10/2018",][, c("Hour", "Functioning.Day")]), max.level
 Next, some tables are proposed in order to better understand how categorical regressors are distributed throughout the dataset. 
 ```{r, echo = FALSE}
 par(mfrow = c(1, 3))
-barchart(df$Seasons, horizontal = F, main = "Seasons barchart")
-barchart(df$Holiday, horizontal = F, main = "Holiday (YES/NO) barchart")
-barchart(df$Functioning.Day, horizontal = F,
+barchart(df$Seasons, horizontal = F, col = "#BAF7C9",
+         main = "Seasons barchart")
+barchart(df$Holiday, horizontal = F, col = "#BAF7C9",
+         main = "Holiday (YES/NO) barchart")
+barchart(df$Functioning.Day, horizontal = F, col = "#BAF7C9",
          main = "Functioning (YES/NO) day barchart")
 ```
 
 ## 2.1. Graphical Data exploration
 
 In the first place, regressors are taken into consideration for (graphical) exploratory analysis.
+
 
 Through a pivot table we can assess more clearly the behavior of the independent variables. This because for most of the weather conditions, the information recorded at each hour of the day may result messy at this point of the analysis.
 Therefore, the following object is meant to group variables on each date, based on a function (that can be either max or mean).
@@ -186,8 +189,9 @@ Next, we are interested in the independent (or target) variable of the study. Th
 From these plots we see how the target variable distribution is left-skewed and pretty far from a normal distribution (considering also the sample size).
 ```{r, echo = FALSE}
 par(mfrow = c(1, 2))
-hist(df$Rented.Bike.Count, main = "Rented Bikes count")
-boxplot(df$Rented.Bike.Count, main = "Rented Bikes count", horizontal = T)
+hist(df$Rented.Bike.Count, main = "Rented Bikes count", col = "#BAF7C9")
+boxplot(df$Rented.Bike.Count, main = "Rented Bikes count",
+        horizontal = T, col = "#BAF7C9")
 ```
 
 ```{r, echo = FALSE}
@@ -202,7 +206,7 @@ We can see the average number of bikes rented for day is low in Winter, increase
 # Convert "Seasons" as factor and set a precise ordering
 df$Seasons <- factor(df$Seasons, levels = c("Spring", "Summer", "Autumn", "Winter"))
 plot(df$Seasons, df$Rented.Bike.Count, main = "Bikes rented for season",
-     xlab = "Season", ylab = "Rented Bikes")
+     xlab = "Season", ylab = "Rented Bikes", col = "#BAF7C9")
 ```
 
 We can see the average number of bikes rented in Winter is much less than the average number in the other seasons (because of the low temperatures). 
@@ -213,7 +217,7 @@ Non-Holiday days are characterized by an average of rented bikes greater than th
 ```{r,echo = FALSE}
 df$Holiday <- as.factor(df$Holiday)
 plot(df$Holiday, df$Rented.Bike.Count, main = "Bikes rented for holiday",
-     xlab = "Holiday", ylab = "Rented Bikes")
+     xlab = "Holiday", ylab = "Rented Bikes", col = "#BAF7C9")
 ```
 
 To analyze the number of bikes rented by period of the day We add a factor variable related to the hour time (it is Night from 0 am to 5 am, Morning from 6am to 11 am and so on). From the plot we can notice the number of bikes rented is on average high in the Evening and low at Night.
@@ -226,7 +230,7 @@ df$Time <- ifelse(df$Hour >= 18, "Evening",
 df$Time <- factor(df$Time, levels = c("Morning", "Afternoon", "Evening", "Night"))
 
 plot(df$Time, df$Rented.Bike.Count, main = "Bikes rented for Time",
-     xlab = "Time", ylab = "Rented Bikes")
+     xlab = "Time", ylab = "Rented Bikes", col = "#BAF7C9")
 ```
 
 # 3. FEATURE ENGINEERING
@@ -249,7 +253,7 @@ XY$Holiday <- factor(XY$Holiday, levels = c(0, 1))
 ```{r}
 # Tranform the response variable in order to make it more similar to a normal distribution
 XY$Rented.Bike.Count <- log(XY$Rented.Bike.Count)
-hist(XY$Rented.Bike.Count, main = "Log of Rented Bikes count")
+hist(XY$Rented.Bike.Count, main = "Log of Rented Bikes count", col = "#BAF7C9")
 ```
 
 ```{r}
@@ -332,24 +336,29 @@ vif(reg.init)
 
 **Analysis of variance**
 
-From the consideration of the ANOVA with respect to the factor variables, the procedures utilized are (1) Bartlett's test on equal variances (2) Fisher's test and (3) Turkey's method.
-From the first we can already reject the null hypothesis of equal variances between different levels of the factor `Seasons`. Accordingly, we obtain the same result when it comes to the Fisher test.
+From the consideration of the ANOVA with respect to the factor variables, the procedures utilized are (1) Bartlett's test on equal variances (2) ANOVA and (3) Tukey's method.
 
-Finally, in order to have a graphical representation of the impact of the difference levels of this factor variable on the target variables, we considered the Turkey's method, from which we can see the differences in means between groups.
+Given the result of the first ($p_{value} < 2.2*10^{-16}$), we know that variances are different for the different samples (it corresponds to rejecting the null hypothesis $H_{0}$), which would break one of the assumptions of the Fisher's test.
+We can still perform ANOVA, but the results may be misleading. Through the ANOVA (Fisher's test), however we obtain a p-value that is again much lower than 0.05 - thus we reject the null hypothesis of equal means between different levels of the factor `Seasons`.
+
 ```{r}
 bartlett.test(XY$Rented.Bike.Count ~ XY$Seasons)
 aov.seasons1 <- aov(XY$Rented.Bike.Count ~ XY$Seasons)
 summary(aov.seasons1)
 ```
 
-The graphs must be read from bottom left to right along each row (the bottom left one is related to the number of bikes rented by the temperature in Spring). 
+Since this may not be enough, we perform a Tukey's test, which provides us with the statistical significance of each pairwise comparison between all levels of `Seasons`. Here we see that all p-values are lower than 0.05, thus making us reject the null hypothesis that all means being compared are from the same population.
+
+Finally, in order to have a graphical representation of the impact of the difference levels of this factor variable on the target variables, we considered a conditioning plot from which we can see the differences in means between groups.
+The graphs should be read from bottom left to right along each row (the bottom left one is related to the number of bikes rented by the temperature in Spring).
+The last plot of the result of the Tukey's test shows that actually the only pairwise difference whose value is close to zero is the one between *Autumn* and *Summer*. However, all the p-values are lower than 0.05, thus corroborating the fact that the pairwise differences in means are significantly different from zero.
 ```{r}
 # Conditioning plot
 coplot(XY$Rented.Bike.Count ~ XY$Temperature.C. | XY$Seasons)
-turkey.seasons1 <- TukeyHSD(aov.seasons1)
-turkey.seasons1
+tukey.seasons1 <- TukeyHSD(aov.seasons1)
+tukey.seasons1
 
-plot(turkey.seasons1, las = 1, cex.axis = .5)
+plot(tukey.seasons1, las = 1, cex.axis = .5)
 ```
 
 From the diagnosis of this first model, we will adopt some changes in the set of data at hand, in particular:
@@ -441,6 +450,7 @@ vif(reg.rain.snow.flag)
 ```
 
 Finally, we have performed the test on homogeneity of variances for the two new factor variables created.
+For both the variables `Snowfall (cm)` and `Rainfall (mm)`, we observe the same behavior of the Bartlett's test on homogeneity of variance ($p_{value} < 0.05$ and consequent rejection of the null hypothesis). We directly rely on a Tukey's test (which in this case provides only one line of output as the number of levels is 2 for both variables), and the p-value is lower than 0.05 in both cases. We thus reject the null hypothesis of the test.
 ```{r}
 bartlett.test(XY2$Rented.Bike.Count ~ XY2$Snowfall.cm.)
 TukeyHSD(aov(XY2$Rented.Bike.Count ~ XY2$Snowfall.cm.))
@@ -467,20 +477,22 @@ selection.result <- function(data) {
      ylab = "RSS", type = "l")
   
   # (2) Adjusted-R^2 with its largest value
-  plot(data$adjr2, xlab = "Number of Variables", ylab = "Adjusted Rsq", type = "l")
+  plot(data$adjr2, xlab = "Number of Variables",
+       ylab = "Adjusted Rsq", type = "l")
   points(which.max(data$adjr2), data$adjr2[which.max(data$adjr2)],
-         col = "red", cex = 2, pch = 20)
+         col = "#1ED760", cex = 3, pch = 20)
   
   # (3) Mallow's Cp with its smallest value
-  plot(data$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+  plot(data$cp, xlab = "Number of Variables",
+       ylab = "Cp", type = "l")
   points(which.min(data$cp), data$cp[which.min(data$cp)],
-         col = "red", cex = 2, pch = 20)
+         col = "#1ED760", cex = 3, pch = 20)
   
   # (4) BIC with its smallest value
-  plot(data$bic, xlab = "Number of Variables", ylab = "BIC", type = "l")
-  
+  plot(data$bic, xlab = "Number of Variables",
+       ylab = "BIC", type = "l")
   points(which.min(data$bic), data$bic[which.min(data$bic)],
-         col = "red",cex = 2, pch = 20)
+         col = "#1ED760", cex = 3, pch = 20)
   
   out <- data$adjr2[which.max(data$adjr2)]
   out <- round(out, 4)
@@ -570,7 +582,7 @@ plot(mean.cv.errors, type = "b",
 
 points(which.min(mean.cv.errors),
        mean.cv.errors[which.min(mean.cv.errors)],
-       col = "red", cex = 2, pch = 20)
+       col = "#1ED760", cex = 3, pch = 20)
 ```
 
 We thus explicitly define the resulting Best Subset, which has the following variables removed:
@@ -598,20 +610,20 @@ From the above ANOVA test, in which the null hypothesis ($H_{0}$) can be formula
 we can notice how $p = 0.9693$, thus much larger than $0.05$ associated to a 95% confidence. This means we don't reject the null hypothesis: in other words, by removing the three variables (`Visibility.10m.`, `Wind.speed.m.s.`, `Snowfall..cm.`) we have not obtained a statistically significant improvement in the variance explained by the new model. As a matter of fact, the $Adj. R^{2}$ is unchanged from the previous step.
 
 We have performed an additional check for the `Seasons` variable, as the level *Summer* still shows a very high p-value (on the test whose $H_{0}:\hat\beta_{i} = 0$).
+The result of the following chunks should not be too far from the one shown in paragraph 4.1 (since the only difference is that 3 statistical units have been removed - i.e. the outliers).
+In fact, we observe the Bartlett's test to have almost the same test statistics and a p-value far below the 0.05 threshold, thus indicating that we should reject the $H_{0}$ of homogeneity of variances.
+The reasoning provided in the aforementioned paragraph holds for the ANOVA as well. Finally, we propose the additional Tukey's test to show that the all the p-values of the pairwise differences in means lead to the rejection of the null hypothesis of equal mean between groups.
 
-The Bartlett test shows a very low p-value, thus indicating that we should reject the $H_{0}$ of homogeneity of variances.
-
-This is additionally confirmed through the Turkey's method and the corresponding conditioning plot.
 ```{r}
 bartlett.test(XYBSS$Rented.Bike.Count ~ XYBSS$Seasons)
 aov.seasons2 <- aov(XYBSS$Rented.Bike.Count ~ XYBSS$Seasons)
 summary(aov.seasons2)
 # Conditioning plot
 coplot(XYBSS$Rented.Bike.Count ~ XYBSS$Temperature.C. | XYBSS$Seasons)
-turkey.seasons2 <- TukeyHSD(aov.seasons2)
-turkey.seasons2
+tukey.seasons2 <- TukeyHSD(aov.seasons2)
+tukey.seasons2
 
-plot(turkey.seasons2, las = 1, cex.axis = .5)
+plot(tukey.seasons2, las = 1, cex.axis = .5)
 ```
 
 Finally, we have checked on variance inflation factors and further diagnostic.
@@ -685,7 +697,6 @@ adjr2.function <- function(X.ref, v.pred, v.true){
 
 ## 5.5. Regularization tecnhiques: LASSO
 
-
 ```{r}
 # LASSO with CV
 lambda.lasso <- seq(0, 10, length = 200)
@@ -729,9 +740,6 @@ noquote(c("R-squared: ",
           "Adj. R-squared: ",
           adjr2.function(X.matrix, final.lasso.pred , y.vector)$Adj.R2) )
 ```
-
-
-
 
 ## 5.6. Regularization tecnhiques: Ridge
 
@@ -790,13 +798,12 @@ This difference can be shown when considering how the number of non zero compone
 
 As a matter of facts, we see how the components never get to zero for the considered grid of parameters with a L2 norm, while for the L1 penalty, all parameters get to zero very fast.
 
-
 ```{r}
-plot(lasso.cv$lambda, lasso.cv$nzero, type = "b", col = "green",
+plot(lasso.cv$lambda, lasso.cv$nzero, type = "b", col = "#1ED760",
      xlab = expression(lambda), ylab = "# of non-zero components",
      main = "Number of non-zero components against regularization intensity")
 lines(ridge.cv$lambda, ridge.cv$nzero, type = "b", col = "blue")
-legend(8, 7, c("RIDGE", "LASSO"), col = c("blue", "green"),
+legend(8, 7, c("RIDGE", "LASSO"), col = c("blue", "#1ED760"),
        lty = 1, cex = 0.8)
 ```
 
