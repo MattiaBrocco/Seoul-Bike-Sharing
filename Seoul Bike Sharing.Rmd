@@ -397,6 +397,7 @@ vif(reg.out2)
 ```
 
 From this second model, we don't see that much of an improvement in terms of the variance explained. However, this model shows that all the coefficients are still statistically different from zero.
+This still holds when looking at the ANOVA table, with a particular attention on the categorical regressors.
 ```{r, echo = FALSE}
 anova(reg.out2)
 ```
@@ -603,11 +604,11 @@ summary(reg.best.subset.out)
 anova(reg.best.subset.out, reg.rain.snow.flag)
 ```
 
-From the above ANOVA test, in which the null hypothesis ($H_{0}$) can be formulated as:
+Since the two models are nested we canFrom the above ANOVA test, in which the null hypothesis ($H_{0}$) can be formulated as:
 
-> The improvement in Adjusted R-squared is not statistically significant
+> The reduction in the residual sum of squares is statistically significant
 
-we can notice how $p = 0.9693$, thus much larger than $0.05$ associated to a 95% confidence. This means we don't reject the null hypothesis: in other words, by removing the three variables (`Visibility.10m.`, `Wind.speed.m.s.`, `Snowfall..cm.`) we have not obtained a statistically significant improvement in the variance explained by the new model. As a matter of fact, the $Adj. R^{2}$ is unchanged from the previous step.
+we can notice how $p = 0.9693$, thus much larger than $0.05$ associated to a 95% confidence. This means we don't reject the null hypothesis: in other words, by adding the three variables (`Visibility.10m.`, `Wind.speed.m.s.`, `Snowfall..cm.`) we have not obtained a statistically significant improvement in the variance explained by the new model. As a matter of fact, the $Adj. R^{2}$ is unchanged from the previous step.
 
 We have performed an additional check for the `Seasons` variable, as the level *Summer* still shows a very high p-value (on the test whose $H_{0}:\hat\beta_{i} = 0$).
 The result of the following chunks should not be too far from the one shown in paragraph 4.1 (since the only difference is that 3 statistical units have been removed - i.e. the outliers).
