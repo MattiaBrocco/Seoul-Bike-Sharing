@@ -604,7 +604,7 @@ summary(reg.best.subset.out)
 anova(reg.best.subset.out, reg.rain.snow.flag)
 ```
 
-Since the two models are nested we canFrom the above ANOVA test, in which the null hypothesis ($H_{0}$) can be formulated as:
+Since the two models are nested we can perform a *chisq-test* on the reduction of the residuals. From the latter, in which the null hypothesis ($H_{0}$) can be formulated as:
 
 > The reduction in the residual sum of squares is statistically significant
 
