@@ -31,7 +31,6 @@ List of packages used
 * `ggplot2`
 * `corrplot`
 * `data.table`
-* `fastDummies`
 
 ```{r, include = FALSE}
 library(car)
@@ -42,7 +41,6 @@ library(mosaic)
 library(ggplot2)
 library(corrplot)
 library(data.table)
-library(fastDummies)
 ```
 
 
@@ -87,14 +85,14 @@ print(c(unique(df[df[, "Holiday"] == "Holiday", ]["Date"])), max.levels = 0)
 
 While it is useful to have separated data for each hour, we won't be able to understand whether the target variable is influenced by a specific holiday (e.g. New Year's Eve), given that we only have data for one year. However, what we will show is whether the fact that one day is holiday or not has an impact on the target variable.
 
-The feature `Functioning.day` indicates if there is data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while in 06/10/2018 there are data from 7 am onwards. These data gaps are likely due to malfunctions or maintenance activities.
+The feature `Functioning.day` indicates if there is data about the number of bikes rented. We can see that for 12 days there are no data for the entire day, while on 06/10/2018 there are data from 7.00 AM onwards. These data gaps are likely due to malfunctions or maintenance activities.
 ```{r, echo = FALSE}
 table(df$Functioning.Day)
 print(c(unique(df[df[, "Functioning.Day"] == "No", ]["Date"])), max.levels = 0)
 print(c(df[df$Date == "06/10/2018",][, c("Hour", "Functioning.Day")]), max.levels = 0)
 ```
 
-Next, some tables are proposed in order to better understand how categorical regressors are distributed throughout the dataset. 
+Next, some bar plots are proposed in order to better understand how categorical regressors are distributed throughout the dataset. 
 ```{r, echo = FALSE}
 par(mfrow = c(1, 3))
 barchart(df$Seasons, horizontal = F, col = "#BAF7C9",
@@ -109,7 +107,6 @@ barchart(df$Functioning.Day, horizontal = F, col = "#BAF7C9",
 
 In the first place, regressors are taken into consideration for (graphical) exploratory analysis.
 
-
 Through a pivot table we can assess more clearly the behavior of the independent variables. This because for most of the weather conditions, the information recorded at each hour of the day may result messy at this point of the analysis.
 Therefore, the following object is meant to group variables on each date, based on a function (that can be either max or mean).
 ```{r}
@@ -120,20 +117,20 @@ df$Date <- as.Date(df$Date, format = "%d/%m/%Y")
 pivot.table <- aggregate(Rented.Bike.Count~Date, df, FUN = mean)
 
 pivot.table$Max.Day.Solar.Radiation <- aggregate(Solar.Radiation.MJ.m2. ~ Date,
-                                                df, FUN = max)$Solar.Radiation.MJ.m2.
+						 df, FUN = max)$Solar.Radiation.MJ.m2.
 pivot.table$Max.Day.Wind.Speed <- aggregate(Wind.speed.m.s. ~ Date,
-                                                df, FUN = max)$Wind.speed.m.s.
+                                            df, FUN = max)$Wind.speed.m.s.
 pivot.table$Max.Day.Rainfall <- aggregate(Rainfall.mm. ~ Date,
-                                                df, FUN = max)$Rainfall.mm.
+                                          df, FUN = max)$Rainfall.mm.
 pivot.table$Max.Day.Snowfall <- aggregate(Snowfall.cm. ~ Date,
-                                                df, FUN = max)$Snowfall.cm.
+                                          df, FUN = max)$Snowfall.cm.
 pivot.table$Avg.Day.Humidity <- aggregate(Humidity ~ Date,
                                           df, FUN = mean)$Humidity
 pivot.table$Avg.Day.Visibility <- aggregate(Visibility.10m ~ Date,
                                             df, FUN = mean)$Visibility.10m
 ```
 
-We may see no unexpected behavior in the graphs, the atmospheric variables show trends not too far from what we expect from a continental climate throughout the different seasons (higher humidity in Summer, snowfall only in Winter and so on).
+We may see no unexpected behavior in the graphs, as the atmospheric variables show trends not too far from what we expect from a continental climate throughout the different seasons (higher humidity in Summer, snowfall only in Winter and so on).
 
 ```{r, echo = FALSE}
 ##############################
@@ -187,6 +184,7 @@ densityplot(~Visibility.10m, data = df, groups = Seasons,
 Next, we are interested in the independent (or target) variable of the study. The following representations aim at assessing the behavior of the latter, as well as the extent of generic relationships between the target variable and the available regressors.
 
 From these plots we see how the target variable distribution is left-skewed and pretty far from a normal distribution (considering also the sample size).
+
 ```{r, echo = FALSE}
 par(mfrow = c(1, 2))
 hist(df$Rented.Bike.Count, main = "Rented Bikes count", col = "#BAF7C9")
@@ -327,7 +325,7 @@ From the plot of the residuals against the fitted values we can see the mean is 
 
 **Variance Inflation Factor**
 
-From the correlation matrix shown in the previous part of the report, we could see that `Dew.point.temperature (°C)` and `Temperature (°C)` are highly correlated. This is reflected also when looking at the VIF. These two variables show the most extreme values in terms of VIF, meaning that there is a high tendency for collinearity in this set of regressors.
+From the correlation matrix shown in the previous part of the report, we could see that `Dew.point.temperature (°C)` and `Temperature (°C)` are highly correlated. This is also evident when looking at the VIF. These two variables show the most extreme values in terms of VIF, meaning that there is a high tendency for collinearity in this set of regressors.
 From now on we will consider only `Temperature (°C)`.
 
 ```{r, echo = FALSE}
